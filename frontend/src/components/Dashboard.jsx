@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-// Tambahkan RefreshCw dan hapus Play/Pause jika tidak digunakan lagi
 import { BarChart3, Settings, TrendingUp, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react'; 
 import NGTrendChart from './NGTrendChart';
 import useWebSocket from '../hooks/useWebSocket';

@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
-// 1. Definisikan state awal dalam sebuah konstanta agar bisa digunakan kembali
+// Definisikan state awal dalam sebuah konstanta agar bisa digunakan kembali dan di-reset
 const initialDataState = {
   totalOK: 0,
   totalNG: 0,
@@ -9,21 +9,20 @@ const initialDataState = {
   avgCycleTime: 0,
   ngTrendData: [],
   latestCycleData: null,
-  allCycleData: []
+  allCycleData: [] // Ini akan diisi oleh data spesifik dari server
 };
 
 const useWebSocket = (url) => {
   const [socket, setSocket] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
-  // 2. Gunakan konstanta initialDataState untuk inisialisasi
   const [data, setData] = useState(initialDataState); 
   
-  const reconnectTimeoutRef = useRef();
+  const reconnectTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 10;
   const reconnectInterval = 3000;
 
-  const connect = () => {
+  const connect = useCallback(() => {
     try {
       console.log('🔗 Attempting to connect to WebSocket:', url);
       const ws = new WebSocket(url);
@@ -33,6 +32,9 @@ const useWebSocket = (url) => {
         setConnectionStatus('Connected');
         setSocket(ws);
         reconnectAttemptsRef.current = 0;
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+        }
       };
       
       ws.onmessage = (event) => {
@@ -55,11 +57,13 @@ const useWebSocket = (url) => {
                 ...message.data,
                 totalParts: (message.data.totalOK !== undefined ? message.data.totalOK : prevData.totalOK) + 
                             (message.data.totalNG !== undefined ? message.data.totalNG : prevData.totalNG),
+                // Pastikan ngTrendData tidak di-reset jika tidak ada di payload
                 ngTrendData: message.data.ngTrendData || prevData.ngTrendData
               }));
               break;
               
             case 'ALL_CYCLE_DATA':
+              // Hanya update bagian allCycleData, jangan reset state lain
               setData(prevData => ({
                 ...prevData,
                 allCycleData: message.data
@@ -67,7 +71,7 @@ const useWebSocket = (url) => {
               break;
               
             default:
-              console.log('Unknown message type:', message.type);
+              console.warn('Unknown message type:', message.type);
           }
         } catch (error) {
           console.error('❌ Error parsing WebSocket message:', error);
@@ -81,7 +85,7 @@ const useWebSocket = (url) => {
         
         if (reconnectAttemptsRef.current < maxReconnectAttempts) {
           const timeout = reconnectInterval * Math.pow(1.5, reconnectAttemptsRef.current);
-          console.log(`🔄 Reconnecting in ${timeout}ms... (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
+          console.log(`🔄 Reconnecting in ${timeout.toFixed(0)}ms... (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
           
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current++;
@@ -96,14 +100,14 @@ const useWebSocket = (url) => {
       
       ws.onerror = (error) => {
         console.error('❌ WebSocket error:', error);
-        setConnectionStatus('Error');
+        // onclose akan dipanggil setelah onerror, jadi biarkan onclose menangani reconnect
       };
       
     } catch (error) {
       console.error('❌ Error creating WebSocket connection:', error);
       setConnectionStatus('Error');
     }
-  };
+  }, [url]);
 
   useEffect(() => {
     connect();
@@ -113,10 +117,12 @@ const useWebSocket = (url) => {
         clearTimeout(reconnectTimeoutRef.current);
       }
       if (socket) {
+        // Hapus listener sebelum close untuk mencegah reconnect
+        socket.onclose = null; 
         socket.close();
       }
     };
-  }, [url]);
+  }, [url, connect]);
 
   const sendMessage = (message) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -127,11 +133,16 @@ const useWebSocket = (url) => {
     return false;
   };
 
-  const requestAllData = () => {
-    return sendMessage({ type: 'REQUEST_ALL_DATA' });
-  };
+  // --- FUNGSI INI YANG DIPERBARUI ---
+  // Sekarang menerima argumen 'payload' untuk dikirim bersama request
+  const requestAllData = useCallback((payload = {}) => {
+    return sendMessage({ 
+      type: 'REQUEST_ALL_DATA',
+      payload: payload // Sertakan payload di sini
+    });
+  }, [socket]); // Menggunakan useCallback agar fungsi ini tidak dibuat ulang kecuali socket berubah
   
-  // 3. Buat fungsi untuk mereset data ke state awal
+  // Fungsi untuk mereset data ke state awal
   const resetData = () => {
     console.log('🔄 Resetting data state...');
     setData(initialDataState);
@@ -142,8 +153,8 @@ const useWebSocket = (url) => {
     connectionStatus,
     data,
     sendMessage,
-    requestAllData,
-    resetData, // 4. Tambahkan fungsi resetData ke objek yang di-return
+    requestAllData, // Fungsi yang sudah diperbarui
+    resetData,
     isConnected: connectionStatus === 'Connected'
   };
 };

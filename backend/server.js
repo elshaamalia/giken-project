@@ -39,7 +39,7 @@ let totalNG = 0;
 let currentOutput = 0;
 let avgCycleTime = 0;
 let ngTrendData = []; // Array untuk data NG trend
-let allCycleData = []; // Array untuk semua data cycle
+let allCycleData = []; // Array untuk cache data real-time di memori
 let latestCycleData = null;
 
 // Fungsi untuk broadcast data ke semua WebSocket clients 
@@ -58,7 +58,6 @@ function broadcastToClients(data) {
 // =================================================================
 async function calculateStats() {
     try {
-        // Query ini hanya mengambil data dari hari ini (CURDATE())
         const [rows] = await pool.execute(`
             SELECT 
                 COUNT(CASE WHEN status = 'OK' THEN 1 END) as ok_count,
@@ -73,14 +72,11 @@ async function calculateStats() {
             totalNG = rows[0].ng_count || 0;
             avgCycleTime = parseFloat(rows[0].avg_cycle_time || 0).toFixed(2);
             
-            // Ambil output terakhir khusus untuk hari ini untuk akurasi lebih tinggi
             const [lastOutputToday] = await pool.execute(
                 'SELECT count_number FROM cycle_data WHERE DATE(timestamp) = CURDATE() ORDER BY timestamp DESC, id DESC LIMIT 1'
             );
             currentOutput = lastOutputToday.length > 0 ? lastOutputToday[0].count_number : 0;
-
         } else {
-            // Reset jika belum ada data sama sekali untuk hari ini
             totalOK = 0;
             totalNG = 0;
             avgCycleTime = 0;
@@ -96,30 +92,16 @@ async function calculateStats() {
 // =================================================================
 async function generateNGTrendData() {
     try {
-        // Ambil semua data NG hari ini, diurutkan berdasarkan waktu kejadian
         const [ngEvents] = await pool.execute(`
-            SELECT 
-                end_time 
-            FROM cycle_data 
-            WHERE 
-                DATE(timestamp) = CURDATE() AND status = 'NG'
-            ORDER BY 
-                STR_TO_DATE(end_time, '%H:%i:%s') ASC
+            SELECT end_time FROM cycle_data 
+            WHERE DATE(timestamp) = CURDATE() AND status = 'NG'
+            ORDER BY STR_TO_DATE(end_time, '%H:%i:%s') ASC
         `);
-        
         let cumulativeNG = 0;
-        
-        // Buat array baru dengan timestamp asli dan nilai kumulatif
-        const realTimeTrend = ngEvents.map(event => {
-            cumulativeNG++; // Tambah hitungan NG setiap kali ada event
-            return {
-                time: event.end_time, // Gunakan timestamp asli dari database
-                value: cumulativeNG   // Nilai kumulatif saat itu
-            };
-        });
-
-        ngTrendData = realTimeTrend; // Update variabel global
-        
+        ngTrendData = ngEvents.map(event => ({
+            time: event.end_time,
+            value: ++cumulativeNG
+        }));
         console.log('📊 Realtime NG Trend data generated:', ngTrendData.length, 'points');
     } catch (error) {
         console.error('❌ Error generating realtime NG trend data:', error);
@@ -127,25 +109,35 @@ async function generateNGTrendData() {
 }
 
 // =================================================================
-// == FUNGSI UNTUK MENGAMBIL SEMUA DATA CYCLE (UNTUK TABEL DETAIL) ==
+// == FUNGSI BARU: MENGAMBIL DATA BERDASARKAN PERIODE ==
 // =================================================================
-async function getAllCycleData() {
+async function fetchCycleDataByPeriod(period = 'all') {
     try {
-        const [rows] = await pool.execute(`
-            SELECT 
-                id,
-                start_time,
-                end_time,
-                cycle_time_seconds,
-                count_number,
-                status,
-                timestamp
+        let whereClause = '';
+        switch (period) {
+            case 'today':
+                whereClause = 'WHERE DATE(timestamp) = CURDATE()';
+                break;
+            case 'last7days':
+                whereClause = 'WHERE timestamp >= CURDATE() - INTERVAL 7 DAY';
+                break;
+            case 'thismonth':
+                whereClause = 'WHERE YEAR(timestamp) = YEAR(CURDATE()) AND MONTH(timestamp) = MONTH(CURDATE())';
+                break;
+            case 'all':
+            default:
+                break; 
+        }
+
+        const query = `
+            SELECT id, start_time, end_time, cycle_time_seconds, count_number, status, timestamp
             FROM cycle_data 
+            ${whereClause}
             ORDER BY timestamp DESC
             LIMIT 1000
-        `);
-        
-        allCycleData = rows.map(row => ({
+        `;
+        const [rows] = await pool.execute(query);
+        const cycleData = rows.map(row => ({
             id: row.id,
             no: row.count_number,
             startTime: row.start_time,
@@ -154,33 +146,37 @@ async function getAllCycleData() {
             status: row.status,
             createdAt: row.timestamp
         }));
-        
-        console.log('📋 All cycle data loaded:', allCycleData.length, 'records');
+        console.log(`📋 Fetched ${cycleData.length} records for period: ${period}`);
+        return cycleData;
     } catch (error) {
-        console.error('❌ Error loading all cycle data:', error);
+        console.error(`❌ Error loading cycle data for period ${period}:`, error);
+        return [];
+    }
+}
+
+// =================================================================
+// == FUNGSI UNTUK MENGAMBIL DATA AWAL (CACHE DI MEMORI) ==
+// =================================================================
+async function loadInitialDataCache() {
+    try {
+        // Fungsi ini hanya untuk cache awal di memori
+        allCycleData = await fetchCycleDataByPeriod('all');
+        console.log('📋 Initial all cycle data loaded into memory cache:', allCycleData.length, 'records');
+    } catch (error) {
+        console.error('❌ Error loading initial cycle data cache:', error);
     }
 }
 
 // =================================================================
 // == KONEKSI DAN EVENT HANDLING ==
 // =================================================================
-
-// WebSocket connection handler
 wss.on('connection', (ws) => {
     console.log('🔗 New WebSocket client connected');
     clients.push(ws);
     
-    // Kirim data awal saat client pertama kali terhubung
     ws.send(JSON.stringify({
         type: 'INITIAL_DATA',
-        data: {
-            totalOK,
-            totalNG,
-            currentOutput,
-            avgCycleTime,
-            ngTrendData,
-            latestCycleData
-        }
+        data: { totalOK, totalNG, currentOutput, avgCycleTime, ngTrendData, latestCycleData }
     }));
     
     ws.on('close', () => {
@@ -188,13 +184,16 @@ wss.on('connection', (ws) => {
         clients = clients.filter(client => client !== ws);
     });
     
-    ws.on('message', (message) => {
+    // --- HANDLER PESAN WEBSOCKET YANG SUDAH DIPERBARUI ---
+    ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
             if (data.type === 'REQUEST_ALL_DATA') {
+                const period = data.payload?.period || 'today';
+                const requestedData = await fetchCycleDataByPeriod(period);
                 ws.send(JSON.stringify({
                     type: 'ALL_CYCLE_DATA',
-                    data: allCycleData
+                    data: requestedData
                 }));
             }
         } catch (error) {
@@ -203,23 +202,16 @@ wss.on('connection', (ws) => {
     });
 });
 
-// MQTT Event: Connection
 mqttClient.on('connect', async () => {
     console.log('✅ Connected to MQTT Broker');
-    
     mqttClient.subscribe(process.env.MQTT_TOPIC, (err) => {
-        if (err) {
-            console.error('❌ Error subscribing to topic:', err);
-        } else {
-            console.log(`📥 Subscribed to topic: ${process.env.MQTT_TOPIC}`);
-        }
+        if (err) console.error('❌ Error subscribing to topic:', err);
+        else console.log(`📥 Subscribed to topic: ${process.env.MQTT_TOPIC}`);
     });
 
-    // Hitung semua statistik awal saat server pertama kali dijalankan
     await calculateStats();
     await generateNGTrendData();
-    await getAllCycleData();
-
+    await loadInitialDataCache(); // Memuat data awal ke cache
     console.log('🚀 Server is ready and waiting for data...');
 });
 
@@ -229,74 +221,61 @@ mqttClient.on('message', async (topic, message) => {
         console.log('\n📨 New data from ESP32');
         let messageString = message.toString();
 
-        // --- (Bagian parsing string dari ESP32 tetap sama) ---
-        if (messageString.startsWith("'") && messageString.endsWith("'")) {
-            messageString = messageString.slice(1, -1);
-        }
-        if (messageString.startsWith('"') && messageString.endsWith('"')) {
-            messageString = messageString.slice(1, -1);
-        }
+        if (messageString.startsWith("'") && messageString.endsWith("'")) messageString = messageString.slice(1, -1);
+        if (messageString.startsWith('"') && messageString.endsWith('"')) messageString = messageString.slice(1, -1);
         if (messageString.includes('startTime:') && !messageString.includes('"startTime"')) {
             messageString = messageString
-                .replace(/startTime:/g, '"startTime":')
-                .replace(/endTime:/g, '"endTime":')
-                .replace(/cycleTime:/g, '"cycleTime":')
-                .replace(/count:/g, '"count":')
-                .replace(/status:/g, '"status":')
-                .replace(/timestamp:/g, '"timestamp":')
-                .replace(/"startTime":([^,}]+)/g, '"startTime":"$1"')
-                .replace(/"endTime":([^,}]+)/g, '"endTime":"$1"')
-                .replace(/"status":([^,}]+)/g, '"status":"$1"')
-                .replace(/"timestamp":([^,}]+)/g, '"timestamp":"$1"');
+                .replace(/startTime:/g, '"startTime":').replace(/endTime:/g, '"endTime":')
+                .replace(/cycleTime:/g, '"cycleTime":').replace(/count:/g, '"count":')
+                .replace(/status:/g, '"status":').replace(/timestamp:/g, '"timestamp":')
+                .replace(/"startTime":([^,}]+)/g, '"startTime":"$1"').replace(/"endTime":([^,}]+)/g, '"endTime":"$1"')
+                .replace(/"status":([^,}]+)/g, '"status":"$1"').replace(/"timestamp":([^,}]+)/g, '"timestamp":"$1"');
         }
-        // --- (Akhir bagian parsing) ---
 
         const data = JSON.parse(messageString);
 
-        if (!data.startTime || !data.endTime || data.cycleTime === undefined || data.count === undefined || !data.status) {
+        if (!data.startTime || !data.endTime || data.cycleTime === undefined || !data.status) {
             console.log('❌ Invalid data format from ESP32');
             return;
         }
-
+        
+        const dailyCountNumber = totalOK + totalNG + 1;
+        
         const query = `
             INSERT INTO cycle_data (start_time, end_time, cycle_time_seconds, count_number, status, timestamp) 
             VALUES (?, ?, ?, ?, ?, ?)
         `;
-        const values = [data.startTime, data.endTime, data.cycleTime, data.count, data.status, data.timestamp];
+        const values = [data.startTime, data.endTime, data.cycleTime, dailyCountNumber, data.status, data.timestamp];
         const [result] = await pool.execute(query, values);
 
-        // Setelah data baru masuk, hitung ulang semua statistik harian
         await calculateStats();
 
-        // Jika data baru adalah NG, generate ulang data grafiknya
         if (data.status === 'NG') {
             await generateNGTrendData(); 
         }
 
         latestCycleData = {
-            no: data.count,
+            no: dailyCountNumber,
             startTime: data.startTime,
             endTime: data.endTime,
             cycleTime: parseFloat(data.cycleTime).toFixed(2),
             status: data.status
         };
 
-        // Tambahkan data baru ke daftar semua cycle data di memori
         allCycleData.unshift({
             id: result.insertId,
-            no: data.count,
+            no: dailyCountNumber,
             startTime: data.startTime,
             endTime: data.endTime,
             cycleTime: parseFloat(data.cycleTime).toFixed(2),
             status: data.status,
             createdAt: data.timestamp
         });
-
+        
         if (allCycleData.length > 1000) {
             allCycleData = allCycleData.slice(0, 1000);
         }
 
-        // Broadcast update ke semua client
         broadcastToClients({
             type: 'REAL_TIME_UPDATE',
             data: {
@@ -306,7 +285,7 @@ mqttClient.on('message', async (topic, message) => {
                 currentOutput,
                 avgCycleTime,
                 latestCycleData,
-                ...(data.status === 'NG' && { ngTrendData }) // Kirim ngTrendData hanya jika ada update NG
+                ...(data.status === 'NG' && { ngTrendData })
             }
         });
 
@@ -320,23 +299,18 @@ mqttClient.on('message', async (topic, message) => {
 // =================================================================
 // == ENDPOINTS DAN SHUTDOWN ==
 // =================================================================
-
-// REST API Endpoints (untuk debugging)
 app.get('/api/stats', (req, res) => res.json({ totalOK, totalNG, totalParts: totalOK + totalNG, currentOutput, avgCycleTime }));
 app.get('/api/ng-trend', (req, res) => res.json(ngTrendData));
-app.get('/api/all-data', (req, res) => res.json(allCycleData));
+app.get('/api/all-data', (req, res) => res.json(allCycleData)); // Endpoint ini akan mengembalikan data cache
 
-// Start HTTP server
 app.listen(process.env.HTTP_PORT, () => {
     console.log(`🌐 HTTP server running on port ${process.env.HTTP_PORT}`);
 });
 
-// MQTT Error handler
 mqttClient.on('error', (error) => {
     console.error('❌ MQTT Error:', error);
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
     console.log('\n🛑 Shutting down gracefully...');
     mqttClient.end();
