@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Download, Filter, Search, CheckCircle, XCircle, Clock, BarChart3 } from 'lucide-react';
-import useWebSocket from '../hooks/useWebSocket'; // Pastikan path ini benar
+import useWebSocket from '../hooks/useWebSocket'; 
 
 const AllData = ({ onNavigateBack }) => {
   const { data, requestAllData, isConnected } = useWebSocket('ws://localhost:8080');

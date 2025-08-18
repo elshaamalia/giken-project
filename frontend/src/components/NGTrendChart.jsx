@@ -1,5 +1,4 @@
 import React from 'react';
-// Tambahkan CartesianGrid ke dalam import dari recharts
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Tooltip } from 'recharts';
 
 const NGTrendChart = ({ data, className = "" }) => {
@@ -40,7 +39,6 @@ const NGTrendChart = ({ data, className = "" }) => {
   };
 
   const maxValue = displayData.length > 0 ? Math.max(...displayData.map(d => d.value)) : 0;
-  // Domain sumbu Y disesuaikan agar ada ruang di atas nilai maksimum
   const yAxisDomainMax = Math.max(maxValue + Math.ceil(maxValue * 0.2), 10); 
 
   return (
@@ -62,12 +60,10 @@ const NGTrendChart = ({ data, className = "" }) => {
             </linearGradient>
           </defs>
 
-          {/* --- TAMBAHKAN KODE INI --- */}
           <CartesianGrid 
             strokeDasharray="3 3" 
             stroke="#e5e7eb" 
           />
-          {/* --- SAMPAI DI SINI --- */}
           
           <XAxis 
             dataKey="time" 

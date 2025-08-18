@@ -111,7 +111,7 @@ const Dashboard = ({ onNavigateToAllData }) => {
 
         {/* Stats Cards */}
         <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">OK</p>
@@ -124,7 +124,7 @@ const Dashboard = ({ onNavigateToAllData }) => {
             </div>
 
             {/* NG Count */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">NG</p>
@@ -137,7 +137,7 @@ const Dashboard = ({ onNavigateToAllData }) => {
             </div>
 
             {/* Total Parts */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Total Parts</p>
@@ -150,7 +150,7 @@ const Dashboard = ({ onNavigateToAllData }) => {
             </div>
 
             {/* Average Cycle Time */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">Avg Cycle Time</p>
