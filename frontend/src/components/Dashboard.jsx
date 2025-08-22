@@ -185,61 +185,74 @@ const Dashboard = ({ onNavigateToAllData }) => {
           </div>
 
           {/* Table Header */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-md font-semibold text-gray-900">No</th>
-                  <th className="text-left py-3 px-4 text-md font-semibold text-gray-900">Start Time</th>
-                  <th className="text-left py-3 px-4 text-md font-semibold text-gray-900">End Time</th>
-                  <th className="text-left py-3 px-4 text-md font-semibold text-gray-900">Cycle Time (s)</th>
-                  <th className="text-left py-3 px-4 text-md font-semibold text-gray-900">Status</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="grid grid-cols-5 gap-8">
+            {/* START TIME Column */}
+            <div className="text-center">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">START TIME</h3>
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
+                <span className="text-sm text-gray-900">
+                  {data.latestCycleData ? data.latestCycleData.startTime : "--:--:--"}
+                </span>
+              </div>
+            </div>
+
+            {/* END TIME Column */}
+            <div className="text-center">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">END TIME</h3>
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
+                <span className="text-sm text-gray-900">
+                  {data.latestCycleData ? data.latestCycleData.endTime : "--:--:--"}
+                </span>
+              </div>
+            </div>
+
+            {/* CYCLE TIME Column */}
+            <div className="text-center">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">CYCLE TIME</h3>
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
+                <span className="text-sm font-medium text-gray-900">
+                  {data.latestCycleData ? `${data.latestCycleData.cycleTime}s` : "--s"}
+                </span>
+              </div>
+            </div>
+
+            {/* OUTPUT Column */}
+            <div className="text-center">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">OUTPUT</h3>
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
+                <span className="text-sm text-gray-900">{data.currentOutput ? `#${data.currentOutput}` : "--"}</span>
+              </div>
+            </div>
+
+            {/* STATUS PART Column */}
+            <div className="text-center">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">STATUS PART</h3>
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
                 {data.latestCycleData ? (
-                  <tr className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4 text-md font-medium text-gray-900">{data.latestCycleData.no}</td>
-                    <td className="py-3 px-4 text-md text-gray-700">{data.latestCycleData.startTime}</td>
-                    <td className="py-3 px-4 text-md text-gray-700">{data.latestCycleData.endTime}</td>
-                    <td className="py-3 px-4 text-md font-medium text-gray-900">{data.latestCycleData.cycleTime}</td>
-                    <td className="py-3 px-4">
-                      <span 
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          data.latestCycleData.status === 'OK' 
-                            ? 'bg-green-100 text-green-800 status-ok' 
-                            : 'bg-red-100 text-red-800 status-ng'
-                        }`}
-                      >
-                        {data.latestCycleData.status === 'OK' ? (
-                          <>
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            OK
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="w-3 h-3 mr-1" />
-                            NG
-                          </>
-                        )}
-                      </span>
-                    </td>
-                  </tr>
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                      data.latestCycleData.status === "OK"
+                        ? "bg-green-50 text-green-700 border border-green-200"
+                        : "bg-red-50 text-red-700 border border-red-200"
+                    }`}
+                  >
+                    {data.latestCycleData.status === "OK" ? (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-2"></div>
+                        OK
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></div>
+                        NG
+                      </>
+                    )}
+                  </span>
                 ) : (
-                  <tr>
-                    <td colSpan="5" className="py-8 text-center text-gray-500">
-                      <div className="flex flex-col items-center space-y-2">
-                        <Clock className="w-8 h-8 text-gray-300" />
-                        <span>Waiting for cycle data...</span>
-                        {!isConnected && (
-                          <span className="text-xs text-red-500">Check WebSocket connection</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                  <span className="text-sm text-gray-400">--</span>
                 )}
-              </tbody>
-            </table>
+              </div>
+            </div>
           </div>
 
           {/* Footer note */}
