@@ -38,8 +38,8 @@ let totalOK = 0;
 let totalNG = 0;
 let currentOutput = 0;
 let avgCycleTime = 0;
-let ngTrendData = []; // Array untuk data NG trend
-let allCycleData = []; // Array untuk cache data real-time di memori
+let ngTrendData = []; 
+let allCycleData = [];
 let latestCycleData = null;
 
 // Fungsi untuk broadcast data ke semua WebSocket clients 
@@ -139,7 +139,8 @@ async function fetchCycleDataByPeriod(period = 'all') {
         const [rows] = await pool.execute(query);
         const cycleData = rows.map(row => ({
             id: row.id,
-            no: row.count_number,
+            // ✅ PERUBAHAN 1: Mengganti 'no' menjadi 'output'
+            output: row.count_number,
             startTime: row.start_time,
             endTime: row.end_time,
             cycleTime: parseFloat(row.cycle_time_seconds).toFixed(2),
@@ -184,7 +185,6 @@ wss.on('connection', (ws) => {
         clients = clients.filter(client => client !== ws);
     });
     
-    // --- HANDLER PESAN WEBSOCKET YANG SUDAH DIPERBARUI ---
     ws.on('message', async (message) => {
         try {
             const data = JSON.parse(message);
@@ -211,7 +211,7 @@ mqttClient.on('connect', async () => {
 
     await calculateStats();
     await generateNGTrendData();
-    await loadInitialDataCache(); // Memuat data awal ke cache
+    await loadInitialDataCache();
     console.log('🚀 Server is ready and waiting for data...');
 });
 
@@ -255,7 +255,8 @@ mqttClient.on('message', async (topic, message) => {
         }
 
         latestCycleData = {
-            no: dailyCountNumber,
+            // ✅ PERUBAHAN 2: Mengganti 'no' menjadi 'output'
+            output: dailyCountNumber,
             startTime: data.startTime,
             endTime: data.endTime,
             cycleTime: parseFloat(data.cycleTime).toFixed(2),
@@ -264,7 +265,8 @@ mqttClient.on('message', async (topic, message) => {
 
         allCycleData.unshift({
             id: result.insertId,
-            no: dailyCountNumber,
+            // ✅ PERUBAHAN 3: Mengganti 'no' menjadi 'output'
+            output: dailyCountNumber,
             startTime: data.startTime,
             endTime: data.endTime,
             cycleTime: parseFloat(data.cycleTime).toFixed(2),
@@ -301,7 +303,7 @@ mqttClient.on('message', async (topic, message) => {
 // =================================================================
 app.get('/api/stats', (req, res) => res.json({ totalOK, totalNG, totalParts: totalOK + totalNG, currentOutput, avgCycleTime }));
 app.get('/api/ng-trend', (req, res) => res.json(ngTrendData));
-app.get('/api/all-data', (req, res) => res.json(allCycleData)); // Endpoint ini akan mengembalikan data cache
+app.get('/api/all-data', (req, res) => res.json(allCycleData));
 
 app.listen(process.env.HTTP_PORT, () => {
     console.log(`🌐 HTTP server running on port ${process.env.HTTP_PORT}`);

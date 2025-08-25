@@ -189,8 +189,8 @@ const Dashboard = ({ onNavigateToAllData }) => {
             {/* START TIME Column */}
             <div className="text-center">
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">START TIME</h3>
-              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
-                <span className="text-sm text-gray-900">
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center border border-slate-100">
+                <span className="text-lg text-gray-900">
                   {data.latestCycleData ? data.latestCycleData.startTime : "--:--:--"}
                 </span>
               </div>
@@ -199,8 +199,8 @@ const Dashboard = ({ onNavigateToAllData }) => {
             {/* END TIME Column */}
             <div className="text-center">
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">END TIME</h3>
-              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
-                <span className="text-sm text-gray-900">
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center border border-slate-100">
+                <span className="text-lg text-gray-900">
                   {data.latestCycleData ? data.latestCycleData.endTime : "--:--:--"}
                 </span>
               </div>
@@ -209,8 +209,8 @@ const Dashboard = ({ onNavigateToAllData }) => {
             {/* CYCLE TIME Column */}
             <div className="text-center">
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">CYCLE TIME</h3>
-              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-900">
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center border border-slate-100">
+                <span className="text-lg font-medium text-gray-900">
                   {data.latestCycleData ? `${data.latestCycleData.cycleTime}s` : "--s"}
                 </span>
               </div>
@@ -219,18 +219,18 @@ const Dashboard = ({ onNavigateToAllData }) => {
             {/* OUTPUT Column */}
             <div className="text-center">
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">OUTPUT</h3>
-              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
-                <span className="text-sm text-gray-900">{data.currentOutput ? `#${data.currentOutput}` : "--"}</span>
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center border border-slate-100">
+                <span className="text-lg text-gray-900">{data.currentOutput ? `#${data.currentOutput}` : "--"}</span>
               </div>
             </div>
 
             {/* STATUS PART Column */}
             <div className="text-center">
               <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">STATUS PART</h3>
-              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center">
+              <div className="bg-gray-50 rounded-lg p-6 min-h-[80px] flex items-center justify-center border border-slate-100">
                 {data.latestCycleData ? (
                   <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-base font-medium ${
                       data.latestCycleData.status === "OK"
                         ? "bg-green-50 text-green-700 border border-green-200"
                         : "bg-red-50 text-red-700 border border-red-200"
