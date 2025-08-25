@@ -139,7 +139,6 @@ async function fetchCycleDataByPeriod(period = 'all') {
         const [rows] = await pool.execute(query);
         const cycleData = rows.map(row => ({
             id: row.id,
-            // ✅ PERUBAHAN 1: Mengganti 'no' menjadi 'output'
             output: row.count_number,
             startTime: row.start_time,
             endTime: row.end_time,
@@ -255,7 +254,6 @@ mqttClient.on('message', async (topic, message) => {
         }
 
         latestCycleData = {
-            // ✅ PERUBAHAN 2: Mengganti 'no' menjadi 'output'
             output: dailyCountNumber,
             startTime: data.startTime,
             endTime: data.endTime,
@@ -265,7 +263,6 @@ mqttClient.on('message', async (topic, message) => {
 
         allCycleData.unshift({
             id: result.insertId,
-            // ✅ PERUBAHAN 3: Mengganti 'no' menjadi 'output'
             output: dailyCountNumber,
             startTime: data.startTime,
             endTime: data.endTime,

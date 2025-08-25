@@ -130,7 +130,6 @@ const AllData = ({ onNavigateBack }) => {
             </div>
 
             {/* Stats Cards */}
-            {/* ✅ PERUBAHAN 2: Layout grid dikembalikan ke 4 kolom */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 {/* Total Records */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex items-center justify-between">
@@ -149,7 +148,6 @@ const AllData = ({ onNavigateBack }) => {
                     <div><p className="text-sm text-gray-600 mb-1">Success Rate</p><p className="text-2xl font-bold text-purple-600">{stats.total > 0 ? ((stats.totalOK / stats.total) * 100).toFixed(1) : '0.0'}%</p></div><Clock className="w-8 h-8 text-purple-400" />
                 </div>
                 
-                {/* ✅ PERUBAHAN 3: Kartu Daily Output dihapus dari sini */}
 
             </div>
 
